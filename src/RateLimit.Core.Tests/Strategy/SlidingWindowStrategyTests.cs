@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using AsyncKeyedLock;
+using Moq;
 using NUnit.Framework;
 using RateLimiter.Core.Extensions;
 using RateLimiter.Core.Models;
@@ -14,6 +15,7 @@ namespace RateLimit.Core.Tests.Strategy
     public class SlidingWindowStrategyTests
     {
         private Mock<IRateLimitStore<RateLimitRequestCounter>> _store;
+        private Mock<AsyncKeyedLocker<string>> _locker;
         private SlidingWindowStrategy _strategy;
 
         private const string TestEndpoint = "test";
@@ -24,7 +26,8 @@ namespace RateLimit.Core.Tests.Strategy
         public void Init()
         {
             _store = new Mock<IRateLimitStore<RateLimitRequestCounter>>();
-            _strategy = new SlidingWindowStrategy(_store.Object);
+            _locker = new Mock<AsyncKeyedLocker<string>>();
+            _strategy = new SlidingWindowStrategy(_store.Object, _locker.Object);
 
             TestRule = new RateLimitRule
             {

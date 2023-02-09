@@ -1,5 +1,5 @@
-﻿using RateLimiter.Core.Extensions;
-using RateLimiter.Core.Lock;
+﻿using AsyncKeyedLock;
+using RateLimiter.Core.Extensions;
 using RateLimiter.Core.Models;
 using RateLimiter.Core.Store;
 using System;
@@ -14,19 +14,19 @@ namespace RateLimiter.Core.Strategy
     public class SlidingWindowStrategy : IRateLimitStrategy
     {
         private readonly IRateLimitStore<RateLimitRequestCounter> _store;
-        private readonly AsyncLocker _locker;
+        private readonly AsyncKeyedLocker<string> _locker;
 
-        public SlidingWindowStrategy(IRateLimitStore<RateLimitRequestCounter> store) 
+        public SlidingWindowStrategy(IRateLimitStore<RateLimitRequestCounter> store, AsyncKeyedLocker<string> asyncKeyedLocker) 
         {
             _store = store;
-            _locker = new AsyncLocker();
+            _locker = asyncKeyedLocker;
         }
 
         public async Task<RateLimitResponse> ApplyRateLimitAsync(string endpoint, string identifier, RateLimitRule rule, CancellationToken cancellationToken = default)
         {
             var counterId = Common.Templates.COUNTER_ID_FORMAT(endpoint, identifier);
 
-            using (await _locker.GetLockAsync(counterId))
+            using (await _locker.LockAsync(counterId, cancellationToken).ConfigureAwait(false))
             {
                 var counter = await _store.GetAsync(counterId, cancellationToken);
                 if (counter == null)
